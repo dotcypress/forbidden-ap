@@ -1,0 +1,15 @@
+[target.riscv32imc-esp-espidf]
+runner = "espflash flash -M"
+linker = "ldproxy"
+rustflags = ["--cfg", "espidf_time64", "-C", "default-linker-libraries"]
+
+[build]
+target = "riscv32imc-esp-espidf"
+
+[env]
+MCU="esp32c3"
+ESP_IDF_VERSION = "v5.1.1"
+SSID = "FreeWiFi"
+
+[unstable]
+build-std = ["std", "panic_abort"]

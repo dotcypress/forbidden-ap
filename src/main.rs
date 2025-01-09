@@ -7,7 +7,7 @@ use esp_idf_svc::{
         server::{Configuration, EspHttpServer},
         Method,
     },
-    io::Write,
+    io::{EspIOError, Write},
     ipv4::{self, Mask, RouterConfiguration, Subnet},
     log::EspLogger,
     netif::{EspNetif, NetifConfiguration, NetifStack},
@@ -17,6 +17,7 @@ use esp_idf_svc::{
 };
 use std::{
     net::Ipv4Addr,
+    str::FromStr,
     thread::{self, sleep},
     time::Duration,
 };
@@ -45,7 +46,7 @@ fn main() -> Result<(), EspError> {
         wifi_driver,
         EspNetif::new(NetifStack::Sta)?,
         EspNetif::new_with_conf(&NetifConfiguration {
-            ip_configuration: ipv4::Configuration::Router(RouterConfiguration {
+            ip_configuration: Some(ipv4::Configuration::Router(RouterConfiguration {
                 subnet: Subnet {
                     gateway: IP_ADDRESS,
                     mask: Mask(24),
@@ -53,15 +54,17 @@ fn main() -> Result<(), EspError> {
                 dhcp_enabled: true,
                 dns: Some(IP_ADDRESS),
                 secondary_dns: Some(IP_ADDRESS),
-            }),
+            })),
             ..NetifConfiguration::wifi_default_router()
         })?,
     )
     .expect("WiFi init failed");
 
+    let ssid = heapless::String::from_str(env!("SSID")).unwrap();
+
     wifi.set_configuration(&wifi::Configuration::AccessPoint(
         AccessPointConfiguration {
-            ssid: env!("SSID").into(),
+            ssid,
             auth_method: wifi::AuthMethod::None,
             ..Default::default()
         },
@@ -78,19 +81,23 @@ fn main() -> Result<(), EspError> {
     let mut server = EspHttpServer::new(&config).expect("HTTP server init failed");
     CaptivePortal::attach(&mut server, IP_ADDRESS).expect("Captive portal attach failed");
 
-    server.fn_handler("/", Method::Get, move |request| {
+    server.fn_handler("/", Method::Get, move |request| -> Result<(), EspIOError> {
         request
             .into_ok_response()?
             .write_all(include_bytes!("web/index.html"))?;
         Ok(())
     })?;
 
-    server.fn_handler("/rr.gif", Method::Get, move |request| {
-        request
-            .into_response(200, None, &[("Content-Type", "image/gif")])?
-            .write_all(include_bytes!("web/rr.gif"))?;
-        Ok(())
-    })?;
+    server.fn_handler(
+        "/rr.gif",
+        Method::Get,
+        move |request| -> Result<(), EspIOError> {
+            request
+                .into_response(200, None, &[("Content-Type", "image/gif")])?
+                .write_all(include_bytes!("web/rr.gif"))?;
+            Ok(())
+        },
+    )?;
 
     loop {
         sleep(Duration::from_millis(50));

@@ -4,7 +4,6 @@ version = "0.0.0"
 authors = ["Vitaly Domnikov <oss@vitaly.codes>"]
 edition = "2021"
 resolver = "2"
-rust-version = "1.71"
 
 [profile.release]
 opt-level = "s"
@@ -20,8 +19,9 @@ alloc = ["esp-idf-svc/alloc"]
 
 [dependencies]
 log = { version = "0.4", default-features = false }
-esp-idf-svc = { version = "0.47.3", default-features = false }
+esp-idf-svc = { version = "0.50.1", default-features = false }
 urlencoding = "2.1.3"
+heapless = "0.8.0"
 
 [build-dependencies]
-embuild = "0.31.3"
+embuild = "0.33.0"
